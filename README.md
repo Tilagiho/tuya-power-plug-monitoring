@@ -1,0 +1,1 @@
+# tuya-power-plug-monitoring
