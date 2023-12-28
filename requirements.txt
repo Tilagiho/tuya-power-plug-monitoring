@@ -1,0 +1,12 @@
+ipykernel
+ipython
+keyring
+matplotlib
+nbformat
+numpy
+pandas
+plotly
+pytz
+requests
+seaborn
+tuya-iot-py-sdk
