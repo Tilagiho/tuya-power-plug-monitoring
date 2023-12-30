@@ -5,12 +5,17 @@ import hmac
 from typing import Any
 from pprint import pprint
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import csv
 import os
+import sys
+from env import ENDPOINT, ACCESS_ID, ACCESS_KEY, DEVICE_ID, COLUMN_ORDER, DATA_DIR
 
-from env import ENDPOINT, ACCESS_ID, ACCESS_KEY, USERNAME, PASSWORD, DEVICE_ID, COLUMN_ORDER
-
+# request variables
+access_token = ""
+t_access_token = -1
+expire_time = -1
+refresh_token = ""
 
 def calculate_sign(
         access_id: str,
@@ -86,7 +91,7 @@ def send_request(request_path, method, access_token, ):
         response = requests.post(request_url, headers=headers)
     else:
         raise NotImplementedError(f"Method \"{method}\" is not implemented.")
-    
+
     return response
 
 def append_to_csv(value_dict, file_path):
@@ -104,53 +109,103 @@ def append_to_csv(value_dict, file_path):
 
         # Append the dictionary as a new row
         writer.writerow(value_dict)
+        
+def get_sleep_time():
+    dt = datetime.utcnow().astimezone(pytz.utc)
+    if dt.hour == 0:
+        return -1
+    else:
+        return 15
 
+def access_token_valid():
+    t = int(time.time())
+    return (access_token != "") and (t - (t_access_token/1000) < expire_time - 100)
 
-# get access token
-response = send_request("/v1.0/token?grant_type=1", "GET", access_token="")
-json_data = response.json()
+def access_token_refreshable():
+    t = int(time.time())
+    return (access_token != "") and (t - (t_access_token/1000) < expire_time - 10)
 
-access_token = json_data['result']['access_token']
-t_access_token = json_data['t']
-expire_time = int(json_data['result']['expire_time'])
-refresh_token = json_data['result']['refresh_token']
+def get_access_token_request_path(get_new_token):
+    if get_new_token:
+        request_path = "/v1.0/token?grant_type=1"
+    else:
+        request_path = f"/v1.0/token/{refresh_token}"
 
-pprint(json_data)
-print()
-# get device info
-while True:
-    # pprint(datetime.now())
-    response = send_request(f"/v1.0/devices/{DEVICE_ID}", "GET", access_token)
+    return request_path
 
-    if response.status_code == 200:
+def update_access_token():
+    global access_token, t_access_token, expire_time, refresh_token
+    # send request
+    attempts = 0
+    while attempts < 100:
+        get_new_token = not access_token_refreshable()
+        request_path = get_access_token_request_path(get_new_token)
+
+        if get_new_token:
+            print("Getting new token...")
+        else:
+            print("Refreshing token...")
+
+        response = send_request(request_path, "GET", access_token="")
         json_data = response.json()
 
-        # get data from request
-        sensor_value_dict = {elem['code']: elem['value'] for elem in json_data['result']['status']}
-        sensor_value_dict['online'] = json_data['result']['online']
-        sensor_value_dict['t'] = json_data['t']
+        if response.status_code == 200 and json_data['success']:
+            break
+        else:
+            print("Access token request not successfull:")
+            print(json_data)
+            print()
+            attempts += 1
+            time.sleep(15)
 
-        date = datetime.now()
-        file_path = f"data/{date.year}{date.month}{date.day}_sensor_data.csv"
-        append_to_csv(sensor_value_dict, file_path)
+    if not (response.status_code == 200 and json_data['success']):
+        raise RuntimeError("No connection possible.")
 
-        # refresh access token if necessary
-        if (sensor_value_dict['t'] - t_access_token)/1000 > (expire_time - 1000):
-            print("Trying to refresh access token...")
-            response = send_request(f"/v1.0/token/{refresh_token}", "GET", "")
-            json_data = response.json()
+    print("Success.")
+    print()
+    # update access token info
+    access_token = json_data['result']['access_token']
+    t_access_token = json_data['t']
+    expire_time = int(json_data['result']['expire_time'])
+    refresh_token = json_data['result']['refresh_token']
+
+# get device info
+while True:
+    # get access token if necessary
+    if not access_token_valid():
+        update_access_token()
+
+    # pprint(datetime.now())
+    response = send_request(f"/v1.0/devices/{DEVICE_ID}", "GET", access_token)
+    json_data = response.json()
+
+    # response error:
+    # sleep and then skip
+    if response.status_code != 200 or not json_data['success']:
+        print("Error reaching server.")
+        print(json_data)
+        print()
+        time.sleep(15)
+        continue
+
+    # get data from request
+    sensor_value_dict = {elem['code']: elem['value'] for elem in json_data['result']['status']}
+    sensor_value_dict['online'] = json_data['result']['online']
+    sensor_value_dict['t'] = json_data['t']
+
+    date = datetime.now()
+    file_path = f"{DATA_DIR}/{date.year}{date.month}{date.day}_sensor_data.csv"
+    append_to_csv(sensor_value_dict, file_path)
+
+    sleep_time = get_sleep_time()
+    if sleep_time < 0:
+        print("Sun is well set. Ending script.")
+        sys.exit()
+
+    time.sleep(sleep_time)
 
             if not json_data['success']:
                 print(json_data)
                 raise RuntimeError("Error: Token refreshing not successfull!")
 
-            print("Success!")
-            access_token = json_data['result']['access_token']
-            expire_time = json_data['result']['expire_time']
-            refresh_token = json_data['result']['refresh_token']
-    else:
-        print("Response error:")
-        pprint(response)
-        print()
-
-    time.sleep(15)
+#        time.sleep(15)
