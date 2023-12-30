@@ -9,13 +9,26 @@ from datetime import datetime, timedelta
 import csv
 import os
 import sys
-from env import ENDPOINT, ACCESS_ID, ACCESS_KEY, DEVICE_ID, COLUMN_ORDER, DATA_DIR
+from suntimes import SunTimes
+import pytz
+
+from env import ENDPOINT, ACCESS_ID, ACCESS_KEY, DEVICE_ID, COLUMN_ORDER, LONGITUDE, LATITUDE, ALTITUDE, TZ_NAME, DATA_DIR
 
 # request variables
 access_token = ""
 t_access_token = -1
 expire_time = -1
 refresh_token = ""
+
+# prepare variables for sunrise and sunset calculation
+sleep_td = timedelta(hours=1)
+sun = SunTimes(longitude=LONGITUDE, latitude=LATITUDE, altitude=ALTITUDE)
+day = datetime.now().date()
+sunrise = sun.risewhere(day, TZ_NAME).astimezone(pytz.utc)
+sunset = sun.setwhere(day, TZ_NAME).astimezone(pytz.utc)
+
+print(f"sunrise: {sunrise}")
+print(f"sunset: {sunset}")
 
 def calculate_sign(
         access_id: str,
@@ -109,11 +122,22 @@ def append_to_csv(value_dict, file_path):
 
         # Append the dictionary as a new row
         writer.writerow(value_dict)
-        
+
 def get_sleep_time():
     dt = datetime.utcnow().astimezone(pytz.utc)
-    if dt.hour == 0:
-        return -1
+    # well before sunrise
+    if dt < (sunrise - 2 * sleep_td):
+        return 600
+    # before sunrise
+    if dt < (sunrise - sleep_td):
+        return 300
+    # well after sunset
+    elif dt > (sunset + 2 * sleep_td):
+        return -1 # end script
+    # after sunset
+    elif dt > (sunset + sleep_td):
+        return 300
+    # during day
     else:
         return 15
 
@@ -203,9 +227,3 @@ while True:
         sys.exit()
 
     time.sleep(sleep_time)
-
-            if not json_data['success']:
-                print(json_data)
-                raise RuntimeError("Error: Token refreshing not successfull!")
-
-#        time.sleep(15)

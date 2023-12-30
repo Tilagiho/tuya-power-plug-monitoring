@@ -11,6 +11,11 @@ ENDPOINT = "https://openapi.tuyaeu.com"
 COLUMN_ORDER = ['t', 'online', 'relay_status', 'countdown_1', 'switch_1', 'cur_voltage', 'cur_current', 'cycle_time', 'cur_power', 'add_ele', 'random_time']
 DATA_DIR = f"{pathlib.Path(__file__).parent.resolve()}/data" # path to data directory
 
+# location settings
+LATITUDE = 52.2722878
+LONGITUDE = 10.3630728
+ALTITUDE = 75
+TZ_NAME = 'Europe/Berlin'
 
 if ACCESS_KEY is None or ACCESS_KEY == "":
     ACCESS_KEY = getpass("Please enter Tuya Cloud project access key (secret): ")
