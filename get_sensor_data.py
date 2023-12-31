@@ -218,7 +218,7 @@ while True:
     sensor_value_dict['t'] = json_data['t']
 
     date = datetime.now()
-    file_path = f"{DATA_DIR}/{date.year}{date.month}{date.day}_sensor_data.csv"
+    file_path = f"{DATA_DIR}/{date.year}{str(date.month).zfill(2)}{str(date.day).zfill(2)}_sensor_data.csv"
     append_to_csv(sensor_value_dict, file_path)
 
     sleep_time = get_sleep_time()
