@@ -10,3 +10,4 @@ requests
 dash
 scipy
 suntimes
+dash-bootstrap-components

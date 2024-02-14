@@ -29,6 +29,7 @@ sunset = sun.setwhere(day, TZ_NAME).astimezone(pytz.utc)
 
 print(f"sunrise: {sunrise}")
 print(f"sunset: {sunset}")
+print()
 
 def calculate_sign(
         access_id: str,
@@ -223,7 +224,21 @@ while True:
 
     sleep_time = get_sleep_time()
     if sleep_time < 0:
-        print("Sun is well set. Ending script.")
-        sys.exit()
+        # print("Sun is well set. Ending script.")
+        # sys.exit()
+
+        # temp:
+        # sleep instead of ending scipt
+        sleep_time = 600
+
+        # update sun info if necessary
+        current_date = datetime.now().date()
+        if day != current_date:
+            day = current_date
+            sunrise = sun.risewhere(day, TZ_NAME).astimezone(pytz.utc)
+            sunset = sun.setwhere(day, TZ_NAME).astimezone(pytz.utc)
+            print(f"sunrise: {sunrise}")
+            print(f"sunset: {sunset}")
+            print()
 
     time.sleep(sleep_time)
