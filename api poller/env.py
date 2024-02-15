@@ -1,15 +1,16 @@
 import keyring as kr
 from getpass import getpass
 import pathlib
-# Tuya cloud configuration
+
+# online
 ACCESS_ID = None # your_access_id
-ACCESS_KEY = kr.get_password("Tuya","secret") # your_access_key
+ACCESS_KEY = kr.get_password("Tuya", "secret") # your_access_key
 DEVICE_ID = None # your_device_id
 ENDPOINT = "https://openapi.tuyaeu.com"
 
 # csv settings
 COLUMN_ORDER = ['t', 'online', 'relay_status', 'countdown_1', 'switch_1', 'cur_voltage', 'cur_current', 'cycle_time', 'cur_power', 'add_ele', 'random_time']
-DATA_DIR = f"{pathlib.Path(__file__).parent.resolve()}/data" # path to data directory
+DATA_DIR = None
 
 # location settings
 LATITUDE = 52.2722878
